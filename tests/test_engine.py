@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rbaengine import contracts, reaction
+from rbaengine import contracts, events, reaction
 from rbaengine.implied_path import month_average, strip_path
 from rbaengine.meetings import effective_date, historical
 
@@ -56,6 +56,20 @@ def test_brier_bounds():
     y = np.array([0, 1, 2])
     assert reaction.brier(np.eye(3), y) == 0.0
     assert reaction.brier(np.eye(3)[[1, 2, 0]], y) == 2.0
+
+
+def test_event_reference_month():
+    assert events.reference_month("aug-2026") == "2026-08"
+    assert events.reference_month("sep-quarter-2025") == "2025-09"
+
+
+def test_event_build_matches_release_day_move():
+    releases = pd.DataFrame({"kind": ["cpi"], "slug": ["jun-2022"], "reference": ["2022-06"],
+                             "released": ["2022-07-27"]})
+    dy = pd.Series([3.0, -11.8], index=[date(2022, 7, 26), date(2022, 7, 27)])
+    surp = pd.DataFrame({"kind": ["cpi"], "reference": ["2022-06"], "surprise": [0.1]})
+    ev = events.build(releases, dy, surp)
+    assert ev.loc[0, "move_bp"] == -11.8 and ev.loc[0, "surprise"] == 0.1
 
 
 def test_ib_dv01():

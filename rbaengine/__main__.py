@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import contracts, data, implied_path, ledger, nowcast, reaction, report
+from . import contracts, data, events, implied_path, ledger, nowcast, reaction, report
 
 warnings.filterwarnings("ignore", message="A date index has been provided")
 pd.set_option("display.width", 200)
@@ -56,8 +56,8 @@ def cmd_size(args):
 # yield changes in bp for (3-year, 10-year)
 CURVE_SCENARIOS = {
     "parallel -10": (-10, -10),
-    "bull steepen (3y -10, 10y -5)": (-10, -5),
-    "bear flatten (3y +10, 10y +5)": (10, 5),
+    "3y -10, 10y -5": (-10, -5),
+    "3y +10, 10y +5": (10, 5),
     "parallel +10": (10, 10),
 }
 
@@ -72,11 +72,13 @@ def cmd_express(args):
     # steepener: the stop is a flattening of stop_bp, which costs one leg's DV01 per bp
     steep_yt, steep_xt = n_yt, round(n_yt / ratio)
     positions = {
-        f"Long {n_yt} {yt['symbol']}": [(yt, "long", n_yt)],
-        f"Long {n_xt} {xt['symbol']}": [(xt, "long", n_xt)],
-        f"Steepener: long {steep_yt} {yt['symbol']} / short {steep_xt} {xt['symbol']}":
-            [(yt, "long", steep_yt), (xt, "short", steep_xt)],
+        "Long 3y": [(yt, "long", n_yt)],
+        "Long 10y": [(xt, "long", n_xt)],
+        "Steepener": [(yt, "long", steep_yt), (xt, "short", steep_xt)],
     }
+    print(f"\nLong 3y   = long {n_yt} {yt['symbol']}"
+          f"\nLong 10y  = long {n_xt} {xt['symbol']}"
+          f"\nSteepener = long {steep_yt} {yt['symbol']}, short {steep_xt} {xt['symbol']}")
     rows = []
     for name, (d3, d10) in CURVE_SCENARIOS.items():
         row = {"Scenario": name}
@@ -90,6 +92,25 @@ def cmd_express(args):
     print(f"\nEach sized to lose about ${args.risk:,.0f} on a {args.stop_bp:g}bp adverse move. "
           f"DV01-neutral ratio: {ratio:.2f} {yt['symbol']} per {xt['symbol']}.\n")
     print(pd.DataFrame(rows).to_string(index=False))
+
+
+def cmd_events(args):
+    releases = events.fetch_release_dates()
+    dy = events.yield_changes()
+    ev = events.build(releases, dy, events.surprises())
+    ev.to_csv(Path("output") / "event_study.csv", index=False)
+    print(f"\n3-year yield, {ev['released'].min():%b %Y} to {dy.index.max():%b %Y}: which days move the front end?\n")
+    print(events.day_types(ev, dy).to_string(index=False))
+    print("\nRelease-day move per 0.1ppt of surprise (surprise = change from previous reading)\n")
+    fits = {}
+    for kind, label in (("cpi", "Trimmed mean CPI, q/q"), ("labour", "Unemployment rate")):
+        for ex in (False, True):
+            f = events.sensitivity(ev, kind, exclude_2020=ex)
+            fits.setdefault(kind, f)
+            print(f"  {label + (' ex-2020' if ex else ''):30s} {f['slope'] / 10:+5.1f}bp  "
+                  f"t = {f['t']:+.1f}  R2 = {f['r2']:.2f}  n = {f['n']}")
+    report.plot_events(ev, fits, Path("output") / "event_study.png")
+    print("\nChart: output/event_study.png")
 
 
 def cmd_open(args):
@@ -173,6 +194,8 @@ def main():
     p.add_argument("--stop-bp", type=float, required=True)
     p.add_argument("--risk", type=float, required=True)
     p.set_defaults(f=cmd_express)
+
+    sub.add_parser("events", help="event study: 3-year yield moves on CPI and labour force days").set_defaults(f=cmd_events)
 
     p = sub.add_parser("open", help="open a paper trade at the latest settlement price")
     p.add_argument("symbol")

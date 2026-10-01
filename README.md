@@ -18,6 +18,7 @@ is a view on, losers included.
 | Record and mark paper trades | `rbaengine/ledger.py` | `ledger/trades.csv` |
 | Estimate an RBA reaction function and backtest it out of sample | `rbaengine/reaction.py` | `output/reaction_backtest.csv` |
 | Re-run my [GDP nowcast](https://github.com/robcambridge/aus-gdp-nowcast) on fresh ABS data at any vintage date | `rbaengine/nowcast.py` | `data/nowcast_panel.csv` |
+| Event study of 3-year yield moves on CPI and labour force days | `rbaengine/events.py` | `output/event_study.csv`, `.png` |
 | Write the weekly note | `rbaengine/report.py` | `notes/YYYY-MM-DD.md` |
 
 ## Method
@@ -79,6 +80,28 @@ and a DV01-neutral 3s10s steepener to the same dollar loss at the stop, then
 shows P&L under parallel and non-parallel curve moves, so the choice of
 instrument is explicit rather than assumed.
 
+**Event study.** Exact release dates are scraped from each ABS release page
+(late 2019 onwards) and matched to the same-day change in the 3-year
+government bond yield.
+
+| Day type | Days | Mean absolute move | vs ordinary day |
+|---|---|---|---|
+| Quarterly CPI | 28 | 7.0bp | 2.0x |
+| Labour force | 80 | 5.8bp | 1.7x |
+| RBA decision | 67 | 5.2bp | 1.5x |
+| All other days | 1,559 | 3.5bp | 1.0x |
+
+CPI days move the front end most, more than RBA decision days, which is
+consistent with decisions being largely priced by the time they arrive. Each
+0.1ppt change in quarterly trimmed mean inflation is associated with about
++1.9bp in the 3-year yield on the day (t = 3.5, R² = 0.28). The unemployment
+rate has the expected negative sign but is not significant (-0.5bp per 0.1ppt,
+t = -1.6). Surprise here means the change from the previous reading, because
+consensus forecasts are not freely available; markets react to actual minus
+consensus, so these slopes understate the true sensitivity.
+
+![Event study](output/event_study.png)
+
 ## Limitations
 
 - The reaction function uses today's revised data rather than real-time
@@ -104,6 +127,7 @@ instrument is explicit rather than assumed.
     python -m rbaengine close 1
     python -m rbaengine view            # reaction function: backtest, model vs market
     python -m rbaengine express --stop-bp 10 --risk 10000
+    python -m rbaengine events          # event study of CPI and labour force days
     python -m rbaengine note            # weekly note skeleton with section 1 filled in
     python -m pytest
 
@@ -114,5 +138,6 @@ instrument is explicit rather than assumed.
 - [x] Add the GDP nowcast as an input and test whether it improves the backtest
 - [x] Compare outright and curve expressions at equal risk
 - [ ] Test whether the model adds information beyond market pricing (needs historical futures data)
-- [ ] Event study: front-end move per unit of CPI and labour force surprise
+- [x] Event study: front-end move on CPI and labour force days (change-from-previous surprise)
+- [ ] Redo the event study with consensus forecasts (needs Bloomberg survey medians)
 - [ ] Carry and roll-down, AU vs US cross-market expression

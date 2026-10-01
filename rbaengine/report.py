@@ -49,6 +49,41 @@ def plot_path(path: pd.DataFrame, cash_rate: float, asof: date, out: Path) -> No
     plt.close(fig)
 
 
+def plot_events(events: pd.DataFrame, fits: dict, out: Path) -> None:
+    """Release-day move in the 3-year yield against the surprise, one panel per release."""
+    panels = [("cpi", "Quarterly CPI", "Change in trimmed mean inflation, q/q (ppt)"),
+              ("labour", "Labour force", "Change in unemployment rate (ppt)")]
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.4), dpi=150)
+    for ax, (kind, title, xlabel) in zip(axes, panels):
+        ev = events[(events["kind"] == kind) & events["surprise"].notna()]
+        ax.axhline(0, color=GRID, lw=1)
+        ax.axvline(0, color=GRID, lw=1)
+        ax.scatter(ev["surprise"], ev["move_bp"], s=26, color=SERIES, edgecolor="white", linewidth=0.8, alpha=0.9)
+        f = fits[kind]
+        # clip the fitted line to the bulk of the data so COVID outliers do not stretch it
+        lo, hi = ev["surprise"].quantile([0.02, 0.98])
+        xs = pd.Series([lo, hi])
+        ax.plot(xs, f["intercept"] + f["slope"] * xs, color=INK, lw=1.5)
+        ax.set_xlim(lo - 0.1, hi + 0.1)
+        ax.set_title(title, loc="left", color=INK, fontsize=11, pad=20)
+        ax.text(0, 1.02, f"{f['slope'] / 10:+.1f}bp per 0.1ppt, t = {f['t']:.1f}, R² = {f['r2']:.2f}, n = {f['n']}",
+                transform=ax.transAxes, color=MUTED, fontsize=8.5, va="bottom")
+        ax.set_xlabel(xlabel, color=MUTED, fontsize=9)
+        ax.grid(color=GRID, lw=0.6)
+        ax.tick_params(colors=MUTED, length=0, labelsize=9)
+        for side in ax.spines.values():
+            side.set_visible(False)
+    axes[0].set_ylabel("3-year yield change on release day (bp)", color=MUTED, fontsize=9)
+    fig.suptitle("Front-end reaction to data: surprise measured against the previous reading",
+                 x=0.01, ha="left", color=INK, fontsize=12)
+    fig.text(0.01, 0.01, "Source: ABS release dates, RBA tables F2, G1, H5. Revised data; no consensus forecasts, "
+             "so slopes understate true sensitivity. Axes exclude the largest 2020 moves.", color=MUTED, fontsize=7.5)
+    fig.tight_layout(rect=(0, 0.03, 1, 0.95))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out)
+    plt.close(fig)
+
+
 def md_table(df: pd.DataFrame) -> str:
     if df.empty:
         return "_None._"

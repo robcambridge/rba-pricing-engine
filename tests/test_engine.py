@@ -1,10 +1,12 @@
 from datetime import date
 
+import numpy as np
+import pandas as pd
 import pytest
 
-from rbaengine import contracts
+from rbaengine import contracts, reaction
 from rbaengine.implied_path import month_average, strip_path
-from rbaengine.meetings import effective_date
+from rbaengine.meetings import effective_date, historical
 
 
 def test_effective_date_skips_weekend():
@@ -29,6 +31,31 @@ def test_strip_recovers_known_path():
     assert list(path["method"]) == ["in-month", "clean-month", "in-month"]
     assert path["prob_25bp"].iloc[0] == pytest.approx(1.0)
     assert path["cum_bp"].iloc[-1] == pytest.approx(35.0)
+
+
+def test_historical_meetings_are_first_tuesdays():
+    dates = historical(2022, date(2023, 12, 31))
+    assert len(dates) == 22 and all(d.weekday() == 1 and d.day <= 7 for d in dates)
+    assert date(2022, 5, 3) in dates  # first hike of the 2022 cycle
+
+
+def test_features_only_use_published_data():
+    quarters = pd.date_range("2020-03-31", "2026-06-30", freq="QE").date
+    cpi = pd.Series(np.arange(len(quarters), dtype=float), index=quarters)
+    months = pd.date_range("2015-01-31", "2026-08-31", freq="ME").date
+    unemp = pd.Series(5.0, index=months)
+    # Three days after June quarter end, the June CPI is not yet published.
+    early = reaction.features(date(2026, 7, 3), cpi, unemp)
+    late = reaction.features(date(2026, 8, 11), cpi, unemp)
+    assert early["infl_gap"] == cpi.iloc[-2] - 2.5
+    assert late["infl_gap"] == cpi.iloc[-1] - 2.5
+    assert late["infl_change"] == 2.0 and late["unemp_gap"] == 0.0
+
+
+def test_brier_bounds():
+    y = np.array([0, 1, 2])
+    assert reaction.brier(np.eye(3), y) == 0.0
+    assert reaction.brier(np.eye(3)[[1, 2, 0]], y) == 2.0
 
 
 def test_ib_dv01():

@@ -16,6 +16,7 @@ is a view on, losers included.
 | Strip a meeting-by-meeting implied cash rate path | `rbaengine/implied_path.py` | `output/implied_path_*.csv`, `.png` |
 | Value contracts, compute DV01, size positions by dollar risk | `rbaengine/contracts.py` | |
 | Record and mark paper trades | `rbaengine/ledger.py` | `ledger/trades.csv` |
+| Estimate an RBA reaction function and backtest it out of sample | `rbaengine/reaction.py` | `output/reaction_backtest.csv` |
 | Write the weekly note | `rbaengine/report.py` | `notes/YYYY-MM-DD.md` |
 
 ## Method
@@ -40,7 +41,33 @@ basis point.
 snapshot, never a price of my choosing. Each trade has a stop, target and
 rationale at entry. Position size comes from a fixed dollar risk at the stop.
 
+**Reaction function.** An ordered probit for cut / hold / hike at each scheduled
+meeting since 1998, on three inputs: trimmed mean inflation less 2.5, the
+unemployment rate less its trailing five-year average, and the two-quarter
+change in trimmed mean inflation. Each meeting only sees data published before
+it. The backtest refits each January on prior years and predicts that year.
+
+Result (176 meetings, 2010 to September 2026, multi-class Brier score, lower is better):
+
+| Forecast | Brier |
+|---|---|
+| Ordered probit | 0.386 |
+| Historical frequencies | 0.390 |
+| Always hold | 0.466 |
+| Ordered probit plus direction of previous move | 0.414 |
+
+The model barely beats a know-nothing forecast, and adding policy inertia makes
+it worse out of sample despite a strong in-sample coefficient. I read this as:
+public macro data alone tells you little about the next meeting that base rates
+do not. The model is used as a consistency check on my own view, not as a
+signal to trade against the market.
+
 ## Limitations
+
+- The reaction function uses today's revised data rather than real-time
+  vintages, and proxies full employment with a trailing average. It has not yet
+  been scored against market-implied probabilities, which needs historical
+  futures data.
 
 - The stripped path is a risk-neutral expectation and contains a term premium.
   "Probability of a 25bp move" is a pricing convention, reliable for the next
@@ -57,13 +84,15 @@ rationale at entry. Position size comes from a fixed dollar risk at the stop.
     python -m rbaengine size YTZ2026 --stop-bp 10 --risk 10000
     python -m rbaengine open YTZ2026 long 35 --stop 94.965 --target 95.265 --rationale "..."
     python -m rbaengine close 1
+    python -m rbaengine view            # reaction function: backtest, model vs market
     python -m rbaengine note            # weekly note skeleton with section 1 filled in
     python -m pytest
 
 ## Roadmap
 
 - [x] Implied path, contract maths, ledger, note generator
-- [ ] Reaction function: ordered probit on inflation and unemployment gaps, fed by the GDP nowcast
-- [ ] Test whether that signal adds information beyond market pricing (Brier score, encompassing regression)
+- [x] Reaction function: ordered probit on inflation and unemployment gaps, backtested out of sample
+- [ ] Add the GDP nowcast as an input and test whether it improves the backtest
+- [ ] Test whether the model adds information beyond market pricing (needs historical futures data)
 - [ ] Event study: front-end move per unit of CPI and labour force surprise
 - [ ] Carry and roll-down, curve and cross-market expressions

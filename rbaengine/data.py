@@ -12,7 +12,7 @@ import requests
 
 ASX_URL = ("https://asx.api.markitdigital.com/asx-research/1.0/derivatives/"
            "interest-rate/{product}/futures?days=1&height=179&width=179")
-RBA_F1_URL = "https://www.rba.gov.au/statistics/tables/csv/f1-data.csv"
+RBA_TABLE_URL = "https://www.rba.gov.au/statistics/tables/csv/{table}-data.csv"
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
 # IB = 30-day interbank cash rate, YT = 3-year bond, XT = 10-year bond
@@ -46,16 +46,21 @@ def fetch_futures(product: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def fetch_rba_table(table: str, date_format: str) -> pd.DataFrame:
+    """An RBA statistical table (e.g. 'f1', 'g1') keyed by series ID, with a `date` column."""
+    r = requests.get(RBA_TABLE_URL.format(table=table), headers=HEADERS, timeout=30)
+    r.raise_for_status()
+    lines = r.content.decode("utf-8-sig").splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith("Series ID"))
+    df = pd.read_csv(StringIO("\n".join(lines[start:]))).rename(columns={"Series ID": "date"})
+    df["date"] = pd.to_datetime(df["date"], format=date_format).dt.date
+    return df
+
+
 def fetch_cash_rate() -> pd.DataFrame:
     """Daily cash rate target and interbank overnight cash rate from RBA table F1."""
-    r = requests.get(RBA_F1_URL, headers=HEADERS, timeout=30)
-    r.raise_for_status()
-    text = r.content.decode("utf-8-sig")
-    lines = text.splitlines()
-    start = next(i for i, line in enumerate(lines) if line.startswith("Series ID"))
-    df = pd.read_csv(StringIO("\n".join(lines[start:])))
-    df = df.rename(columns={"Series ID": "date", "FIRMMCRTD": "target", "FIRMMCRID": "cash_rate"})
-    df["date"] = pd.to_datetime(df["date"], format="%d-%b-%Y").dt.date
+    df = fetch_rba_table("f1", "%d-%b-%Y")
+    df = df.rename(columns={"FIRMMCRTD": "target", "FIRMMCRID": "cash_rate"})
     return df[["date", "target", "cash_rate"]].dropna(subset=["target"]).reset_index(drop=True)
 
 

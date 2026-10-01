@@ -14,6 +14,30 @@ DECISION_DATES = [
 ]
 
 
+# The 2024 reforms moved the Board from eleven meetings a year to eight.
+DECISION_DATES_2024_25 = [
+    date(2024, 2, 6), date(2024, 3, 19), date(2024, 5, 7), date(2024, 6, 18),
+    date(2024, 8, 6), date(2024, 9, 24), date(2024, 11, 5), date(2024, 12, 10),
+    date(2025, 2, 18), date(2025, 4, 1), date(2025, 5, 20), date(2025, 7, 8),
+    date(2025, 8, 12), date(2025, 9, 30), date(2025, 11, 4), date(2025, 12, 9),
+]
+
+
+def historical(start_year: int, asof: date) -> list[date]:
+    """Scheduled decision dates from `start_year` up to `asof`.
+
+    Before 2024 the Board met on the first Tuesday of every month except
+    January. Unscheduled moves (e.g. 19 March 2020) are not meetings here.
+    """
+    dates = []
+    for y in range(start_year, 2024):
+        for m in range(2, 13):
+            first = date(y, m, 1)
+            dates.append(first + timedelta(days=(1 - first.weekday()) % 7))
+    dates += DECISION_DATES_2024_25 + DECISION_DATES
+    return [d for d in dates if d <= asof]
+
+
 def effective_date(decision: date) -> date:
     """A change in the cash rate target applies from the next business day.
 

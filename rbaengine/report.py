@@ -85,6 +85,13 @@ Cash rate: **{cash:.2f}%**. 3-year futures yield: **{y3:.2f}%**. 10-year futures
 
 {scen}
 
+### Reaction function vs market, next meeting
+
+{model}
+
+_The model is an ordered probit on the inflation and unemployment gaps. It is a
+benchmark, not an edge: out of sample it only marginally beats historical frequencies._
+
 ## 2. My view
 
 <!-- Where do you disagree with the table above, and what is the specific
@@ -107,7 +114,8 @@ TODO
 
 
 def write_note(asof: date, cash: float, y3: float, y10: float, path: pd.DataFrame,
-               scen: pd.DataFrame, marks: pd.DataFrame, out_dir: Path = Path("notes")) -> Path:
+               scen: pd.DataFrame, marks: pd.DataFrame, model: pd.DataFrame,
+               out_dir: Path = Path("notes")) -> Path:
     out = out_dir / f"{asof}.md"
     if out.exists():
         raise FileExistsError(f"{out} already exists; notes are never overwritten")
@@ -118,5 +126,6 @@ def write_note(asof: date, cash: float, y3: float, y10: float, path: pd.DataFram
         contract=scen["contract"].iloc[0] if not scen.empty else "n/a",
         scen=md_table(scen.drop(columns="contract")) if not scen.empty else "_No contract._",
         marks=md_table(marks),
+        model=md_table(model),
     ), encoding="utf-8")
     return out

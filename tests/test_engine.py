@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rbaengine import carry, contracts, events, ledger, reaction, tracking
+from rbaengine import carry, contracts, events, ledger, markettest, reaction, tracking
 from rbaengine.implied_path import month_average, strip_path
 from rbaengine.meetings import effective_date, historical
 
@@ -96,6 +96,14 @@ def test_tracking_scores_last_forecast_before_meeting():
     assert scored.loc[0, "outcome"] == "hike" and scored.loc[0, "forecast_date"] == "2026-11-02"
     assert scored.loc[0, "market"] == 0.0
     assert tracking.score(log, changes, date(2026, 11, 3)).empty  # not yet decided
+
+
+def test_ois_implied_probability():
+    # cash 1.50; a fully priced 25bp cut effective in 2 days leaves OIS at (2*1.50 + 28*1.25)/30
+    p = markettest.implied_probs((2 * 1.50 + 28 * 1.25) / 30, 1.50, 2)
+    assert p["priced_bp"] == pytest.approx(-25) and p["mkt_cut"] == pytest.approx(1.0)
+    half = markettest.implied_probs((2 * 1.50 + 28 * 1.625) / 30, 1.50, 2)
+    assert half["mkt_hike"] == pytest.approx(0.5) and half["mkt_hold"] == pytest.approx(0.5)
 
 
 def test_ib_dv01():

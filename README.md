@@ -26,6 +26,7 @@ is a view on, losers included.
 | Publish every trade, winners and losers | `rbaengine/ledger.py` | [`SCORECARD.md`](SCORECARD.md) |
 | Log model and market probabilities daily and score them after each meeting | `rbaengine/tracking.py` | `data/forecast_log.csv`, [`SCORECARD.md`](SCORECARD.md) |
 | Scenario map for the next quarterly CPI | `rbaengine/events.py` | |
+| Test the model and nowcast against historical market pricing | `rbaengine/markettest.py` | `output/market_test.csv`, `market_calibration.png` |
 | Write the weekly note | `rbaengine/report.py` | `notes/YYYY-MM-DD.md` |
 
 ## Method
@@ -87,6 +88,28 @@ and a DV01-neutral 3s10s steepener to the same dollar loss at the stop, then
 shows P&L under parallel and non-parallel curve moves, so the choice of
 instrument is explicit rather than assumed.
 
+**Does anything here beat the market? No.** Market-implied probabilities for
+132 meetings from 2011 to 2022 are rebuilt from the 1-month OIS rate the RBA
+published daily until December 2022, read on the eve of each meeting.
+
+| Forecast | Brier score |
+|---|---|
+| Market pricing | 0.077 |
+| Historical frequencies | 0.337 |
+| Reaction function (out of sample) | 0.355 |
+
+An encompassing regression (ordered probit of the outcome on the market's
+signed probability plus one candidate signal) finds that neither the reaction
+function (z = 0.7, p = 0.46) nor the GDP nowcast (z = -1.4, p = 0.17) adds
+information once market pricing is included. On the eve of a meeting the
+market already knows what public macro data can tell it.
+
+One pattern is worth watching: at the 25 meetings where the market priced
+between 5% and 25% for a move, the RBA never moved. That is consistent with a
+small premium for tail outcomes, but 25 meetings is too few to call it an edge.
+
+![Calibration](output/market_calibration.png)
+
 **Live forecast record.** Each daily update logs the probability of a cut, hold
 or hike at the next meeting from three sources: futures pricing, the reaction
 function, and the reaction function with the nowcast. After each decision the
@@ -137,9 +160,10 @@ consensus, so these slopes understate the true sensitivity.
 ## Limitations
 
 - The reaction function uses today's revised data rather than real-time
-  vintages, and proxies full employment with a trailing average. It has not yet
-  been scored against market-implied probabilities, which needs historical
-  futures data.
+  vintages, and proxies full employment with a trailing average.
+- The market test reads pricing on the eve of each meeting, when the market's
+  advantage is largest. It does not test horizons of weeks or months, and RBA
+  OIS data stops in December 2022.
 
 - The stripped path is a risk-neutral expectation and contains a term premium.
   "Probability of a 25bp move" is a pricing convention, reliable for the next
@@ -162,6 +186,7 @@ consensus, so these slopes understate the true sensitivity.
     python -m rbaengine carry           # carry and roll-down, 3-year and 10-year
     python -m rbaengine spread          # AU vs US 10-year spread
     python -m rbaengine scorecard       # rewrite SCORECARD.md from the ledger
+    python -m rbaengine markettest      # does the model add anything beyond market pricing?
     python -m rbaengine scenario        # scenario map for the next quarterly CPI
     python -m rbaengine events          # event study of CPI and labour force days
     python -m rbaengine note            # weekly note skeleton with section 1 filled in
@@ -174,7 +199,7 @@ consensus, so these slopes understate the true sensitivity.
 - [x] Add the GDP nowcast as an input and test whether it improves the backtest
 - [x] Compare outright and curve expressions at equal risk
 - [x] Live record of model vs market probabilities, scored after each meeting
-- [ ] Backtest the model against historical market pricing (needs historical futures data)
+- [x] Test the model and nowcast against historical market pricing (OIS, 2011 to 2022)
 - [x] Event study: front-end move on CPI and labour force days (change-from-previous surprise)
 - [ ] Redo the event study with consensus forecasts (needs Bloomberg survey medians)
 - [x] Carry and roll-down, AU vs US spread monitor, public scorecard

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import carry, contracts, crossmarket, data, events, implied_path, ledger, nowcast, reaction, report, tracking
+from . import carry, contracts, crossmarket, data, events, implied_path, ledger, markettest, nowcast, reaction, report, tracking
 
 warnings.filterwarnings("ignore", message="A date index has been provided")
 pd.set_option("display.width", 200)
@@ -157,6 +157,29 @@ def cmd_events(args):
     print("\nChart: output/event_study.png")
 
 
+def cmd_markettest(args):
+    cpi, unemp, changes = reaction.fetch_inputs()
+    df = reaction.build_dataset(cpi, unemp, changes, data.snapshot_date(data.load_snapshot()), nowcast.load_panel())
+    t = markettest.build(df)
+    t.round(4).to_csv(Path("output") / "market_test.csv", index=False)
+    scores = markettest.brier_table(t)
+    print(f"\n{len(t)} meetings, {t['meeting'].min():%b %Y} to {t['meeting'].max():%b %Y}. "
+          "Market pricing from 1-month OIS on the eve of each meeting.\n")
+    print("Brier score (lower is better)")
+    for name, s in scores.items():
+        print(f"  {name:22s} {s:.3f}")
+    print("\nDoes a signal add information beyond market pricing? (ordered probit, z-statistics)")
+    for signal, label in (("model_signed", "Reaction function"), ("growth_gap", "GDP nowcast growth gap")):
+        e = markettest.encompassing(t, signal)
+        verdict = "adds information" if e["signal_p"] < 0.05 else "adds nothing detectable"
+        print(f"  {label:24s} market z = {e['market_z']:+.1f} | signal z = {e['signal_z']:+.1f} "
+              f"(p = {e['signal_p']:.2f}) -> {verdict}")
+    cal = markettest.calibration(t)
+    print("\nCalibration of market pricing\n" + cal.round(2).to_string(index=False))
+    report.plot_calibration(cal, scores, Path("output") / "market_calibration.png")
+    print("\nChart: output/market_calibration.png")
+
+
 def cmd_scenario(args):
     """Pre-CPI scenario map: trimmed mean outcome -> expected 3-year yield move -> P&L."""
     snap = data.load_snapshot()
@@ -262,6 +285,7 @@ def main():
     sub.add_parser("carry", help="carry and roll-down for 3-year and 10-year futures").set_defaults(f=cmd_carry)
     sub.add_parser("spread", help="AU vs US 10-year spread monitor").set_defaults(f=cmd_spread)
     sub.add_parser("scorecard", help="write SCORECARD.md from the ledger").set_defaults(f=cmd_scorecard)
+    sub.add_parser("markettest", help="historical test: does the model add anything beyond market pricing").set_defaults(f=cmd_markettest)
     sub.add_parser("scenario", help="scenario map for the next quarterly CPI release").set_defaults(f=cmd_scenario)
     sub.add_parser("events", help="event study: 3-year yield moves on CPI and labour force days").set_defaults(f=cmd_events)
 

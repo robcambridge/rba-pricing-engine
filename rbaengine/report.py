@@ -108,6 +108,36 @@ def plot_spread(df: pd.DataFrame, s: dict, out: Path) -> None:
     plt.close(fig)
 
 
+def plot_calibration(cal: pd.DataFrame, scores: dict, out: Path) -> None:
+    """Market-implied probability of a move against how often the RBA then moved."""
+    fig, ax = plt.subplots(figsize=(7.5, 5.2), dpi=150)
+    ax.plot([0, 1], [0, 1], color=MUTED, lw=1, ls=(0, (4, 3)))
+    ax.annotate("perfectly calibrated", (0.42, 0.42), xytext=(-6, 6), textcoords="offset points",
+                ha="right", color=MUTED, fontsize=8.5)
+    ax.plot(cal["mean_priced"], cal["moved"], color=SERIES, lw=2)
+    ax.scatter(cal["mean_priced"], cal["moved"], s=60, color=SERIES, edgecolor="white", linewidth=1.5, zorder=3)
+    for _, r in cal.iterrows():
+        ax.annotate(f"n={r['meetings']}", (r["mean_priced"], r["moved"]), xytext=(9, 7) if r["moved"] < 0.1 else (9, -12),
+                    textcoords="offset points", color=INK, fontsize=8.5)
+    ax.set_title("When the market priced a move, did the RBA move?", loc="left", color=INK, fontsize=12, pad=26)
+    ax.text(0, 1.03, f"Eve-of-meeting 1-month OIS, 2011 to 2022. Brier: market {scores['market']:.2f}, model {scores['model']:.2f}", transform=ax.transAxes, color=MUTED, fontsize=8.5)
+    ax.set_xlabel("Market-implied probability of a 25bp move", color=MUTED, fontsize=9)
+    ax.set_ylabel("Share of meetings where the RBA moved that way", color=MUTED, fontsize=9)
+    ax.xaxis.set_major_formatter(lambda v, _: f"{v:.0%}")
+    ax.yaxis.set_major_formatter(lambda v, _: f"{v:.0%}")
+    ax.set_xlim(-0.03, 1.05)
+    ax.set_ylim(-0.03, 1.05)
+    ax.grid(color=GRID, lw=0.7)
+    ax.tick_params(colors=MUTED, length=0, labelsize=9)
+    for side in ax.spines.values():
+        side.set_visible(False)
+    fig.text(0.01, 0.01, "Source: RBA tables F1, A2.", color=MUTED, fontsize=7.5)
+    fig.tight_layout(rect=(0, 0.03, 1, 1))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out)
+    plt.close(fig)
+
+
 def md_table(df: pd.DataFrame) -> str:
     if df.empty:
         return "_None._"

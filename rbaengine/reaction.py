@@ -4,6 +4,7 @@
        + b2 * (unemployment - trailing 5-year average)
        + b3 * (change in trimmed mean inflation over two quarters)
        [+ b4 * direction of the previous move]
+       [+ b5 * (GDP nowcast - trend growth)]
 
 Each meeting only sees data already published by the meeting date, using
 conservative publication lags. The values themselves are today's revised
@@ -28,6 +29,7 @@ START_YEAR = 1998
 OUTCOMES = ["cut", "hold", "hike"]
 BASE = ["infl_gap", "unemp_gap", "infl_change"]
 INERTIA = BASE + ["last_move"]
+NOWCAST = BASE + ["growth_gap"]
 
 
 def fetch_inputs():
@@ -40,17 +42,21 @@ def fetch_inputs():
     return cpi, unemp, changes
 
 
-def features(when: date, cpi: pd.Series, unemp: pd.Series) -> dict:
+def features(when: date, cpi: pd.Series, unemp: pd.Series, panel: pd.DataFrame | None = None) -> dict:
     cpi_seen = cpi[cpi.index <= when - timedelta(days=CPI_LAG_DAYS)]
     unemp_seen = unemp[unemp.index <= when - timedelta(days=LABOUR_LAG_DAYS)]
-    return {
+    out = {
         "infl_gap": cpi_seen.iloc[-1] - TARGET_MIDPOINT,
         "unemp_gap": unemp_seen.iloc[-1] - unemp_seen.iloc[-60:].mean(),
         "infl_change": cpi_seen.iloc[-1] - cpi_seen.iloc[-3],
     }
+    if panel is not None:
+        from .nowcast import nowcast_at
+        out["growth_gap"] = nowcast_at(panel, when)["growth_gap"]
+    return out
 
 
-def build_dataset(cpi, unemp, changes, asof: date) -> pd.DataFrame:
+def build_dataset(cpi, unemp, changes, asof: date, panel=None) -> pd.DataFrame:
     """One row per scheduled meeting: outcome and the data visible at the time."""
     rows = []
     for m in meetings.historical(START_YEAR, asof):
@@ -60,7 +66,7 @@ def build_dataset(cpi, unemp, changes, asof: date) -> pd.DataFrame:
             "meeting": m,
             "outcome": int(np.sign(window.sum())) + 1,   # 0 cut, 1 hold, 2 hike
             "last_move": int(np.sign(prior.iloc[-1])) if len(prior) else 0,
-            **features(m, cpi, unemp),
+            **features(m, cpi, unemp, panel),
         })
     return pd.DataFrame(rows)
 
@@ -103,9 +109,9 @@ def scores(bt: pd.DataFrame) -> dict:
     }
 
 
-def next_meeting_view(df: pd.DataFrame, cols: list[str], when: date, cpi, unemp, changes) -> dict:
+def next_meeting_view(df: pd.DataFrame, cols: list[str], when: date, cpi, unemp, changes, panel=None) -> dict:
     """Model probabilities for a meeting on `when`, fitted on every past meeting."""
     model = fit(df, cols)
-    x = {**features(when, cpi, unemp), "last_move": int(np.sign(changes[changes.index <= when].iloc[-1]))}
+    x = {**features(when, cpi, unemp, panel), "last_move": int(np.sign(changes[changes.index <= when].iloc[-1]))}
     p = np.asarray(model.predict(pd.DataFrame([x])[cols]))[0]
     return {"inputs": x, "probs": dict(zip(OUTCOMES, p)), "model": model}

@@ -19,6 +19,9 @@ is a view on, losers included.
 | Estimate an RBA reaction function and backtest it out of sample | `rbaengine/reaction.py` | `output/reaction_backtest.csv` |
 | Re-run my [GDP nowcast](https://github.com/robcambridge/aus-gdp-nowcast) on fresh ABS data at any vintage date | `rbaengine/nowcast.py` | `data/nowcast_panel.csv` |
 | Event study of 3-year yield moves on CPI and labour force days | `rbaengine/events.py` | `output/event_study.csv`, `.png` |
+| Carry and roll-down for bond futures | `rbaengine/carry.py` | |
+| Monitor the AU vs US 10-year spread | `rbaengine/crossmarket.py` | `output/au_us_10y_spread.png` |
+| Publish every trade, winners and losers | `rbaengine/ledger.py` | [`SCORECARD.md`](SCORECARD.md) |
 | Write the weekly note | `rbaengine/report.py` | `notes/YYYY-MM-DD.md` |
 
 ## Method
@@ -80,6 +83,17 @@ and a DV01-neutral 3s10s steepener to the same dollar loss at the stop, then
 shows P&L under parallel and non-parallel curve moves, so the choice of
 instrument is explicit rather than assumed.
 
+**Carry and roll-down.** `carry` reports, for 3-year and 10-year futures, how
+far yields can rise over three months before a long loses money if the curve
+is otherwise unchanged. Carry is the yield less funding, scaled by duration,
+where funding is the average cash rate priced by the IB strip over the horizon.
+Roll-down is the slope of the RBA's interpolated curve below each tenor. The
+futures basket and cheapest-to-deliver effects are ignored.
+
+**Cross-market.** `spread` tracks the Australian less US 10-year yield with its
+five-year z-score, as context for relative RBA versus Fed views. It is a
+monitor only; the ledger trades ASX 24 futures.
+
 **Event study.** Exact release dates are scraped from each ABS release page
 (late 2019 onwards) and matched to the same-day change in the 3-year
 government bond yield.
@@ -127,6 +141,9 @@ consensus, so these slopes understate the true sensitivity.
     python -m rbaengine close 1
     python -m rbaengine view            # reaction function: backtest, model vs market
     python -m rbaengine express --stop-bp 10 --risk 10000
+    python -m rbaengine carry           # carry and roll-down, 3-year and 10-year
+    python -m rbaengine spread          # AU vs US 10-year spread
+    python -m rbaengine scorecard       # rewrite SCORECARD.md from the ledger
     python -m rbaengine events          # event study of CPI and labour force days
     python -m rbaengine note            # weekly note skeleton with section 1 filled in
     python -m pytest
@@ -140,4 +157,4 @@ consensus, so these slopes understate the true sensitivity.
 - [ ] Test whether the model adds information beyond market pricing (needs historical futures data)
 - [x] Event study: front-end move on CPI and labour force days (change-from-previous surprise)
 - [ ] Redo the event study with consensus forecasts (needs Bloomberg survey medians)
-- [ ] Carry and roll-down, AU vs US cross-market expression
+- [x] Carry and roll-down, AU vs US spread monitor, public scorecard

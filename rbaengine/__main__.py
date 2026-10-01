@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import contracts, data, events, implied_path, ledger, nowcast, reaction, report
+from . import carry, contracts, crossmarket, data, events, implied_path, ledger, nowcast, reaction, report
 
 warnings.filterwarnings("ignore", message="A date index has been provided")
 pd.set_option("display.width", 200)
@@ -41,6 +41,7 @@ def cmd_update(args):
     marks = ledger.mark_to_market(snap)
     if not marks.empty:
         print("\nOpen positions\n" + marks.to_string(index=False))
+    Path("SCORECARD.md").write_text(ledger.scorecard(snap), encoding="utf-8")
 
 
 def cmd_size(args):
@@ -92,6 +93,35 @@ def cmd_express(args):
     print(f"\nEach sized to lose about ${args.risk:,.0f} on a {args.stop_bp:g}bp adverse move. "
           f"DV01-neutral ratio: {ratio:.2f} {yt['symbol']} per {xt['symbol']}.\n")
     print(pd.DataFrame(rows).to_string(index=False))
+
+
+def cmd_carry(args):
+    snap, d, cash, ib, path = _state()
+    t = carry.carry_roll(snap, path, cash, d)
+    print(f"\nCarry and roll-down over {carry.HORIZON_DAYS} days if the curve is unchanged "
+          f"(funding = average priced cash rate)\n")
+    print(t.to_string(index=False))
+    yt, xt = t.iloc[0], t.iloc[1]
+    ratio = contracts.curve_ratio(yt["symbol"], 100 - yt["yield"], xt["symbol"], 100 - xt["yield"])
+    print(f"\nA long earns the breakeven in bp: yields can rise that far before it loses money."
+          f"\nDV01-neutral steepener (long {ratio:.2f} {yt['symbol']} per short {xt['symbol']}): "
+          f"{yt['breakeven_bp'] - xt['breakeven_bp']:+.1f}bp of carry and roll per quarter.")
+
+
+def cmd_spread(args):
+    df = crossmarket.spread_history()
+    s = crossmarket.summary(df)
+    report.plot_spread(df, s, Path("output") / "au_us_10y_spread.png")
+    print(f"\nAU vs US 10-year spread, {s['date']:%d %b %Y}\n")
+    print(f"  AU 10y {s['au10']:.2f}%  US 10y {s['us10']:.2f}%  spread {s['spread_bp']:+.0f}bp")
+    print(f"  3-month change {s['change_3m_bp']:+.0f}bp | 5-year average {s['mean_5y_bp']:+.0f}bp | "
+          f"z-score {s['zscore_5y']:+.1f} | higher than {s['percentile_all']:.0%} of days since {s['start']:%Y}")
+    print("\nChart: output/au_us_10y_spread.png")
+
+
+def cmd_scorecard(args):
+    Path("SCORECARD.md").write_text(ledger.scorecard(data.load_snapshot()), encoding="utf-8")
+    print("Wrote SCORECARD.md")
 
 
 def cmd_events(args):
@@ -195,6 +225,9 @@ def main():
     p.add_argument("--risk", type=float, required=True)
     p.set_defaults(f=cmd_express)
 
+    sub.add_parser("carry", help="carry and roll-down for 3-year and 10-year futures").set_defaults(f=cmd_carry)
+    sub.add_parser("spread", help="AU vs US 10-year spread monitor").set_defaults(f=cmd_spread)
+    sub.add_parser("scorecard", help="write SCORECARD.md from the ledger").set_defaults(f=cmd_scorecard)
     sub.add_parser("events", help="event study: 3-year yield moves on CPI and labour force days").set_defaults(f=cmd_events)
 
     p = sub.add_parser("open", help="open a paper trade at the latest settlement price")

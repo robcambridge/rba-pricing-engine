@@ -84,6 +84,30 @@ def plot_events(events: pd.DataFrame, fits: dict, out: Path) -> None:
     plt.close(fig)
 
 
+def plot_spread(df: pd.DataFrame, s: dict, out: Path) -> None:
+    fig, ax = plt.subplots(figsize=(9, 4.5), dpi=150)
+    ax.axhline(0, color=MUTED, lw=1)
+    ax.plot(df.index, df["spread_bp"], color=SERIES, lw=1.1)
+    ax.plot(df.index[-1], s["spread_bp"], "o", color=SERIES, ms=6, mec="white", mew=1.5)
+    ax.annotate(f"{s['spread_bp']:+.0f}bp", (df.index[-1], s["spread_bp"]), xytext=(8, 0),
+                textcoords="offset points", va="center", color=INK, fontsize=9)
+    ax.set_title("Australia less United States 10-year government bond yield",
+                 loc="left", color=INK, fontsize=12, pad=14)
+    ax.text(0, 1.015, f"Basis points, daily. Latest is {s['zscore_5y'] + 0.0:.1f} standard deviations from its 5-year average",
+            transform=ax.transAxes, color=MUTED, fontsize=9)
+    ax.margins(x=0.06)
+    ax.grid(axis="y", color=GRID, lw=0.8)
+    ax.tick_params(colors=MUTED, length=0, labelsize=9)
+    for side in ("top", "right", "left"):
+        ax.spines[side].set_visible(False)
+    ax.spines["bottom"].set_color(GRID)
+    fig.text(0.01, 0.01, "Source: RBA table F2, US Treasury daily par yield curve.", color=MUTED, fontsize=7.5)
+    fig.tight_layout(rect=(0, 0.03, 1, 1))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out)
+    plt.close(fig)
+
+
 def md_table(df: pd.DataFrame) -> str:
     if df.empty:
         return "_None._"

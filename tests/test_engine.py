@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rbaengine import contracts, events, reaction
+from rbaengine import carry, contracts, events, ledger, reaction
 from rbaengine.implied_path import month_average, strip_path
 from rbaengine.meetings import effective_date, historical
 
@@ -70,6 +70,17 @@ def test_event_build_matches_release_day_move():
     surp = pd.DataFrame({"kind": ["cpi"], "reference": ["2022-06"], "surprise": [0.1]})
     ev = events.build(releases, dy, surp)
     assert ev.loc[0, "move_bp"] == -11.8 and ev.loc[0, "surprise"] == 0.1
+
+
+def test_average_funding_steps_at_effective_date():
+    path = pd.DataFrame({"effective": [date(2026, 11, 4)], "implied_rate": [5.0]})
+    # 10 days at 4.0 then 10 days at 5.0
+    assert carry.average_funding(path, 4.0, date(2026, 10, 25), days=20) == pytest.approx(4.5)
+
+
+def test_risk_at_stop():
+    t = {"contracts": 35, "entry_dv01": 28.0, "entry_price": 95.00, "stop_price": 94.90}
+    assert ledger.risk_at_stop(t) == pytest.approx(9800)
 
 
 def test_ib_dv01():

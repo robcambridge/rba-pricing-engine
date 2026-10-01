@@ -8,6 +8,8 @@ The question this project asks is not "can I out-forecast the market" but
 and how much do I risk". Every note and trade is committed before the event it
 is a view on, losers included.
 
+**[Latest pricing](LATEST.md)** (updated each trading day) | **[Scorecard](SCORECARD.md)** (every trade and forecast, losers included) | **[Notes](notes/)**
+
 ## What it does
 
 | Step | Module | Output |

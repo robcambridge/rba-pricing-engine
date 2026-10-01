@@ -45,6 +45,9 @@ def cmd_update(args):
     log = tracking.record(d, path.iloc[0]["meeting"], probs)
     print(f"\nNext meeting {path.iloc[0]['meeting']:%d %b %Y} (logged to {tracking.LOG})\n" + table.to_string(index=False))
     _write_scorecard(snap, log, changes, d)
+    report.plot_path(path, cash, d, Path("output") / "implied_path_latest.png")
+    y3, y10 = (100 - _front(snap, p)["settle"] for p in ("YT", "XT"))
+    report.write_latest(d, cash, y3, y10, path, table, marks)
 
 
 def _write_scorecard(snap, log, changes, d):

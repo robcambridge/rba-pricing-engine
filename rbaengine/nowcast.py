@@ -32,6 +32,7 @@ def refresh_panel() -> pd.DataFrame:
     if missing:
         raise RuntimeError(f"ABS download failed for: {', '.join(sorted(missing))}")
     panel = make_panel(raw, SPECS_BY_NAME)
+    panel["fetched"] = str(date.today())  # file timestamps do not survive a git checkout
     PANEL.parent.mkdir(parents=True, exist_ok=True)
     panel.to_csv(PANEL, index=False)
     return panel
@@ -40,9 +41,9 @@ def refresh_panel() -> pd.DataFrame:
 def load_panel(max_age_days: int = 7) -> pd.DataFrame:
     """The saved panel, refreshed from the ABS if it is older than `max_age_days`."""
     if PANEL.exists():
-        age = pd.Timestamp.today() - pd.Timestamp(PANEL.stat().st_mtime, unit="s")
-        if age.days < max_age_days:
-            return pd.read_csv(PANEL, parse_dates=["ref_end", "available_from"])
+        panel = pd.read_csv(PANEL, parse_dates=["ref_end", "available_from"])
+        if "fetched" in panel and (date.today() - date.fromisoformat(panel["fetched"].iloc[0])).days < max_age_days:
+            return panel
     print("Downloading ABS data for the GDP nowcast (can take several minutes)...")
     return refresh_panel()
 

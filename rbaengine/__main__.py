@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import carry, contracts, crossmarket, data, events, implied_path, ledger, nowcast, reaction, report
+from . import carry, contracts, crossmarket, data, events, implied_path, ledger, nowcast, reaction, report, tracking
 
 warnings.filterwarnings("ignore", message="A date index has been provided")
 pd.set_option("display.width", 200)
@@ -41,7 +41,16 @@ def cmd_update(args):
     marks = ledger.mark_to_market(snap)
     if not marks.empty:
         print("\nOpen positions\n" + marks.to_string(index=False))
-    Path("SCORECARD.md").write_text(ledger.scorecard(snap), encoding="utf-8")
+    _, _, table, _, probs, changes = _model_vs_market(d, path)
+    log = tracking.record(d, path.iloc[0]["meeting"], probs)
+    print(f"\nNext meeting {path.iloc[0]['meeting']:%d %b %Y} (logged to {tracking.LOG})\n" + table.to_string(index=False))
+    _write_scorecard(snap, log, changes, d)
+
+
+def _write_scorecard(snap, log, changes, d):
+    scored = tracking.score(log, changes, d) if len(log) else pd.DataFrame()
+    Path("SCORECARD.md").write_text(ledger.scorecard(snap) + "\n" + tracking.markdown(scored, len(log)),
+                                    encoding="utf-8")
 
 
 def cmd_size(args):
@@ -120,7 +129,9 @@ def cmd_spread(args):
 
 
 def cmd_scorecard(args):
-    Path("SCORECARD.md").write_text(ledger.scorecard(data.load_snapshot()), encoding="utf-8")
+    snap = data.load_snapshot()
+    log = pd.read_csv(tracking.LOG, dtype={"date": str, "meeting": str}) if tracking.LOG.exists() else pd.DataFrame()
+    _write_scorecard(snap, log, reaction.fetch_inputs()[2], data.snapshot_date(snap))
     print("Wrote SCORECARD.md")
 
 
@@ -141,6 +152,24 @@ def cmd_events(args):
                   f"t = {f['t']:+.1f}  R2 = {f['r2']:.2f}  n = {f['n']}")
     report.plot_events(ev, fits, Path("output") / "event_study.png")
     print("\nChart: output/event_study.png")
+
+
+def cmd_scenario(args):
+    """Pre-CPI scenario map: trimmed mean outcome -> expected 3-year yield move -> P&L."""
+    snap = data.load_snapshot()
+    ev = events.build(events.fetch_release_dates(), events.yield_changes(), events.surprises())
+    fit = events.sensitivity(ev, "cpi")
+    when, label, previous = events.next_quarterly_cpi()
+    yt = _front(snap, "YT")
+    dv01 = contracts.dv01(yt["symbol"], yt["settle"])
+    marks = ledger.mark_to_market(snap)
+    table = events.scenario_map(fit, previous, yt["settle"], dv01, marks)
+    print(f"\nScenario map for {label} CPI, released {when:%d %b %Y}")
+    print(f"Previous trimmed mean: {previous:.1f}% q/q. Sensitivity {fit['slope'] / 10:+.1f}bp per 0.1ppt "
+          f"(t = {fit['t']:.1f}); typical miss around the fitted move is +/-{fit['resid_sd']:.0f}bp.\n")
+    print(table.to_string(index=False))
+    print(f"\nP&L is for one long {yt['symbol']} (DV01 ${dv01:.0f})"
+          + (" and for the open book." if not marks.empty else ". No open positions."))
 
 
 def cmd_open(args):
@@ -164,12 +193,14 @@ def _model_vs_market(d, path):
     views = {name: reaction.next_meeting_view(df, cols, nxt["meeting"], cpi, unemp, changes, panel)
              for name, cols in (("Model", reaction.BASE), ("Model + nowcast", reaction.NOWCAST))}
     p = nxt["prob_25bp"]
+    p = max(-1.0, min(1.0, p))  # more than 25bp priced is treated as a certain move
     market = {"cut": max(-p, 0), "hold": 1 - abs(p), "hike": max(p, 0)}
     table = pd.DataFrame({"Outcome": reaction.OUTCOMES})
     for name, v in views.items():
         table[name] = [f"{v['probs'][o]:.0%}" for o in reaction.OUTCOMES]
     table["Market"] = [f"{market[o]:.0%}" for o in reaction.OUTCOMES]
-    return df, views, table, nowcast.nowcast_at(panel, d)
+    probs = {"market": market, "model": views["Model"]["probs"], "model_nowcast": views["Model + nowcast"]["probs"]}
+    return df, views, table, nowcast.nowcast_at(panel, d), probs, changes
 
 
 SPECS = (("inflation and unemployment", reaction.BASE),
@@ -179,7 +210,7 @@ SPECS = (("inflation and unemployment", reaction.BASE),
 
 def cmd_view(args):
     snap, d, cash, ib, path = _state()
-    df, views, table, nc = _model_vs_market(d, path)
+    df, views, table, nc, _, _ = _model_vs_market(d, path)
     print(f"\nOrdered probit on {len(df)} scheduled meetings since {reaction.START_YEAR}\n")
     for v in views.values():
         print(v["model"].summary().tables[1], "\n")
@@ -228,6 +259,7 @@ def main():
     sub.add_parser("carry", help="carry and roll-down for 3-year and 10-year futures").set_defaults(f=cmd_carry)
     sub.add_parser("spread", help="AU vs US 10-year spread monitor").set_defaults(f=cmd_spread)
     sub.add_parser("scorecard", help="write SCORECARD.md from the ledger").set_defaults(f=cmd_scorecard)
+    sub.add_parser("scenario", help="scenario map for the next quarterly CPI release").set_defaults(f=cmd_scenario)
     sub.add_parser("events", help="event study: 3-year yield moves on CPI and labour force days").set_defaults(f=cmd_events)
 
     p = sub.add_parser("open", help="open a paper trade at the latest settlement price")

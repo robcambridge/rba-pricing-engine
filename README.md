@@ -22,6 +22,8 @@ is a view on, losers included.
 | Carry and roll-down for bond futures | `rbaengine/carry.py` | |
 | Monitor the AU vs US 10-year spread | `rbaengine/crossmarket.py` | `output/au_us_10y_spread.png` |
 | Publish every trade, winners and losers | `rbaengine/ledger.py` | [`SCORECARD.md`](SCORECARD.md) |
+| Log model and market probabilities daily and score them after each meeting | `rbaengine/tracking.py` | `data/forecast_log.csv`, [`SCORECARD.md`](SCORECARD.md) |
+| Scenario map for the next quarterly CPI | `rbaengine/events.py` | |
 | Write the weekly note | `rbaengine/report.py` | `notes/YYYY-MM-DD.md` |
 
 ## Method
@@ -82,6 +84,20 @@ note but is not the headline.
 and a DV01-neutral 3s10s steepener to the same dollar loss at the stop, then
 shows P&L under parallel and non-parallel curve moves, so the choice of
 instrument is explicit rather than assumed.
+
+**Live forecast record.** Each daily update logs the probability of a cut, hold
+or hike at the next meeting from three sources: futures pricing, the reaction
+function, and the reaction function with the nowcast. After each decision the
+last forecast logged before decision day is scored with the Brier score in
+[SCORECARD.md](SCORECARD.md). This is the forward-looking test of whether the
+model adds anything to market pricing, and it accumulates one observation per
+meeting. A GitHub Actions workflow (`.github/workflows/daily.yml`) runs the
+update each trading day and commits the result.
+
+**Scenario map.** `scenario` finds the next quarterly CPI release date from the
+ABS calendar and maps each trimmed mean outcome to an expected 3-year yield
+move using the event-study sensitivity, with P&L for a long 3-year contract and
+for the open book. It is written before the release, not after.
 
 **Carry and roll-down.** `carry` reports, for 3-year and 10-year futures, how
 far yields can rise over three months before a long loses money if the curve
@@ -144,6 +160,7 @@ consensus, so these slopes understate the true sensitivity.
     python -m rbaengine carry           # carry and roll-down, 3-year and 10-year
     python -m rbaengine spread          # AU vs US 10-year spread
     python -m rbaengine scorecard       # rewrite SCORECARD.md from the ledger
+    python -m rbaengine scenario        # scenario map for the next quarterly CPI
     python -m rbaengine events          # event study of CPI and labour force days
     python -m rbaengine note            # weekly note skeleton with section 1 filled in
     python -m pytest
@@ -154,7 +171,8 @@ consensus, so these slopes understate the true sensitivity.
 - [x] Reaction function: ordered probit on inflation and unemployment gaps, backtested out of sample
 - [x] Add the GDP nowcast as an input and test whether it improves the backtest
 - [x] Compare outright and curve expressions at equal risk
-- [ ] Test whether the model adds information beyond market pricing (needs historical futures data)
+- [x] Live record of model vs market probabilities, scored after each meeting
+- [ ] Backtest the model against historical market pricing (needs historical futures data)
 - [x] Event study: front-end move on CPI and labour force days (change-from-previous surprise)
 - [ ] Redo the event study with consensus forecasts (needs Bloomberg survey medians)
 - [x] Carry and roll-down, AU vs US spread monitor, public scorecard

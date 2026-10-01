@@ -27,7 +27,7 @@ import pandas as pd
 import requests
 import statsmodels.api as sm
 
-from . import data, meetings
+from . import contracts, data, meetings
 
 ABS = "https://www.abs.gov.au"
 RELEASES = {
@@ -124,5 +124,42 @@ def sensitivity(events: pd.DataFrame, kind: str, exclude_2020: bool = False) -> 
     if exclude_2020:
         ev = ev[[d.year != 2020 for d in ev["released"]]]
     fit = sm.OLS(ev["move_bp"], sm.add_constant(ev["surprise"])).fit(cov_type="HC1")
-    return {"n": len(ev), "intercept": float(fit.params["const"]), "slope": float(fit.params["surprise"]),
+    resid_sd = float(np.sqrt(fit.mse_resid))
+    return {"n": len(ev), "resid_sd": resid_sd, "intercept": float(fit.params["const"]), "slope": float(fit.params["surprise"]),
             "se": float(fit.bse["surprise"]), "t": float(fit.tvalues["surprise"]), "r2": float(fit.rsquared)}
+
+
+def next_quarterly_cpi() -> tuple[date, str, float]:
+    """Date and label of the next CPI release that carries a quarterly trimmed mean,
+    plus the latest published quarterly trimmed mean (per cent, q/q)."""
+    path = RELEASES["cpi"]
+    index = requests.get(ABS + path, headers=HEADERS, timeout=40).text
+    latest = re.search(re.escape(path) + r'/([a-z]{3}(?:-quarter)?-\d{4})"', index).group(1)
+    page = requests.get(f"{ABS}{path}/{latest}", headers=HEADERS, timeout=40).text
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", page))
+    upcoming = re.findall(r"Next Release (\d{1,2})/(\d{2})/(\d{4}) Consumer Price Index, Australia, (\w+) (\d{4})", text)
+    g1 = data.fetch_rba_table("g1", "%d/%m/%Y").set_index("date")["GCPIOCPMTMQP"].dropna()
+    for d, m, y, month, year in upcoming:
+        if month in ("March", "June", "September", "December"):
+            return date(int(y), int(m), int(d)), f"{month} quarter {year}", float(g1.iloc[-1])
+    raise LookupError("No quarterly CPI release in the ABS future release list")
+
+
+def scenario_map(fit: dict, previous: float, price: float, dv01: float, marks: pd.DataFrame,
+                 steps=(-0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.3)) -> pd.DataFrame:
+    """Expected 3-year move for each trimmed mean outcome, from the event-study fit.
+
+    P&L for the open book assumes every open position's yield moves by the same amount.
+    """
+    rows = []
+    for step in steps:
+        move = fit["intercept"] + fit["slope"] * step
+        row = {"Trimmed mean q/q": f"{previous + step:.1f}%", "vs previous": f"{step:+.1f}",
+               "3y yield move (bp)": f"{move:+.1f}", "3y futures price": f"{price - move / 100:.3f}",
+               "P&L per long contract": f"{-move * dv01:+,.0f}"}
+        if not marks.empty:
+            book = sum((1 if m["direction"] == "LONG" else -1) * m["contracts"]
+                       * contracts.dv01(m["symbol"], m["mark"]) * -move for _, m in marks.iterrows())
+            row["Open book P&L"] = f"{book:+,.0f}"
+        rows.append(row)
+    return pd.DataFrame(rows)

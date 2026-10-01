@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rbaengine import carry, contracts, events, ledger, reaction
+from rbaengine import carry, contracts, events, ledger, reaction, tracking
 from rbaengine.implied_path import month_average, strip_path
 from rbaengine.meetings import effective_date, historical
 
@@ -81,6 +81,21 @@ def test_average_funding_steps_at_effective_date():
 def test_risk_at_stop():
     t = {"contracts": 35, "entry_dv01": 28.0, "entry_price": 95.00, "stop_price": 94.90}
     assert ledger.risk_at_stop(t) == pytest.approx(9800)
+
+
+def test_tracking_scores_last_forecast_before_meeting():
+    def row(day, hike):
+        r = {"date": day, "meeting": "2026-11-03"}
+        for s in tracking.SOURCES:
+            r.update({f"{s}_cut": 0.0, f"{s}_hold": 1 - hike, f"{s}_hike": hike})
+        return r
+    # the forecast logged on decision day itself must be ignored
+    log = pd.DataFrame([row("2026-10-30", 0.2), row("2026-11-02", 1.0), row("2026-11-03", 0.0)])
+    changes = pd.Series([0.25], index=[date(2026, 11, 4)])
+    scored = tracking.score(log, changes, date(2026, 11, 5))
+    assert scored.loc[0, "outcome"] == "hike" and scored.loc[0, "forecast_date"] == "2026-11-02"
+    assert scored.loc[0, "market"] == 0.0
+    assert tracking.score(log, changes, date(2026, 11, 3)).empty  # not yet decided
 
 
 def test_ib_dv01():

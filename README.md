@@ -110,6 +110,28 @@ small premium for tail outcomes, but 25 meetings is too few to call it an edge.
 
 ![Calibration](output/market_calibration.png)
 
+**Systematic rules, including the ones that fail.** `rules` tests nine simple,
+pre-specified rules on RBA yield data from 2013 (P&L in bp of yield, before
+carry and costs). All nine are reported because showing only a winner is how
+backtests mislead: with nine tries, one t-statistic near 2 is expected by chance.
+
+| Rule | Sample | Mean | t-stat |
+|---|---|---|---|
+| 12-month momentum, 3-year | 3,035 days | +0.18bp a day | +2.1 |
+| 12-month momentum, 10-year | 3,113 days | +0.03bp a day | +0.3 |
+| 3-month momentum, 3-year | 3,224 days | -0.01bp a day | -0.1 |
+| Follow the CPI-day move for 5 days | 24 releases | +3.2bp | +1.7 |
+| Follow the CPI-day move for 3 days | 24 releases | +2.2bp | +1.1 |
+| Follow the labour-day move for 5 days | 51 releases | 0.0bp | 0.0 |
+| Receive 3-month OIS and hold | 48 quarters | -0.2bp | -0.1 |
+| Fade 3s10s beyond 1.5 standard deviations | 923 days | +0.09bp a day | +0.7 |
+| Drift on RBA decision day | 136 meetings | +0.4bp | +0.7 |
+
+None clears a multiple-testing bar. Two are worth tracking live at small size:
+12-month momentum in the 3-year, and continuation after a CPI-day move. The
+3-month OIS result shows the eve-of-meeting premium found above does not
+extend to a three-month horizon.
+
 **Live forecast record.** Each daily update logs the probability of a cut, hold
 or hike at the next meeting from three sources: futures pricing, the reaction
 function, and the reaction function with the nowcast. After each decision the
@@ -187,6 +209,7 @@ consensus, so these slopes understate the true sensitivity.
     python -m rbaengine spread          # AU vs US 10-year spread
     python -m rbaengine scorecard       # rewrite SCORECARD.md from the ledger
     python -m rbaengine markettest      # does the model add anything beyond market pricing?
+    python -m rbaengine rules           # nine candidate systematic rules, winners and losers
     python -m rbaengine scenario        # scenario map for the next quarterly CPI
     python -m rbaengine events          # event study of CPI and labour force days
     python -m rbaengine note            # weekly note skeleton with section 1 filled in

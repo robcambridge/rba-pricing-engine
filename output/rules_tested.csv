@@ -1,0 +1,10 @@
+Rule,Sample,Mean (bp),t-stat,Hit rate,Signal now
+"12-month momentum, 3-year",3035 days,+0.18,+2.1,,short
+"12-month momentum, 10-year",3113 days,+0.03,+0.3,,short
+"3-month momentum, 3-year",3224 days,-0.01,-0.1,,short
+Follow CPI-day move for 5 days,24 releases,+3.23,+1.7,71%,
+Follow CPI-day move for 3 days,24 releases,+2.15,+1.1,58%,
+Follow labour-day move for 5 days,51 releases,-0.03,-0.0,45%,
+Receive 3-month OIS and hold,48 quarters,-0.17,-0.1,35%,
+Fade 3s10s beyond 1.5 sd,923 days,+0.09,+0.7,,none (z = -0.4)
+Drift on RBA decision day,136 meetings,+0.42,+0.7,,

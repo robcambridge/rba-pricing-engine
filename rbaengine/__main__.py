@@ -5,7 +5,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import carry, contracts, crossmarket, data, events, implied_path, ledger, markettest, nowcast, reaction, report, tracking
+from . import (carry, contracts, crossmarket, data, events, implied_path, ledger, markettest, nowcast,
+               reaction, report, rules, tracking)
 
 warnings.filterwarnings("ignore", message="A date index has been provided")
 pd.set_option("display.width", 200)
@@ -180,6 +181,14 @@ def cmd_markettest(args):
     print("\nChart: output/market_calibration.png")
 
 
+def cmd_rules(args):
+    table = rules.run_all(data.snapshot_date(data.load_snapshot()))
+    table.to_csv(Path("output") / "rules_tested.csv", index=False)
+    print("\nCandidate systematic rules, P&L in bp of yield before carry and costs\n")
+    print(table.to_string(index=False))
+    print("\nNine rules were tried. Expect about one to look significant by chance.")
+
+
 def cmd_scenario(args):
     """Pre-CPI scenario map: trimmed mean outcome -> expected 3-year yield move -> P&L."""
     snap = data.load_snapshot()
@@ -286,6 +295,7 @@ def main():
     sub.add_parser("spread", help="AU vs US 10-year spread monitor").set_defaults(f=cmd_spread)
     sub.add_parser("scorecard", help="write SCORECARD.md from the ledger").set_defaults(f=cmd_scorecard)
     sub.add_parser("markettest", help="historical test: does the model add anything beyond market pricing").set_defaults(f=cmd_markettest)
+    sub.add_parser("rules", help="test candidate systematic rules, including the ones that fail").set_defaults(f=cmd_rules)
     sub.add_parser("scenario", help="scenario map for the next quarterly CPI release").set_defaults(f=cmd_scenario)
     sub.add_parser("events", help="event study: 3-year yield moves on CPI and labour force days").set_defaults(f=cmd_events)
 

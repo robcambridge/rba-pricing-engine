@@ -1,0 +1,2 @@
+trade_id,entry_date,symbol,direction,contracts,entry_price,stop_price,target_price,entry_dv01,rationale,exit_date,exit_price,realised_pnl
+1,2026-10-02,YTZ2026,SHORT,7,95.095,95.345,94.845,28.09,"Rule C: 12-month momentum, 3-year yield above its level a year ago. Half risk; one significant result out of nine rules tested.",,,

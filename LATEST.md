@@ -31,6 +31,8 @@ Cash rate **4.60%** | 3-year futures yield **4.91%** | 10-year **5.36%** | 3s10s
 
 ## Open positions
 
-_None._
+| trade_id | symbol | direction | contracts | entry_price | mark | move_bp | pnl | status |
+|---|---|---|---|---|---|---|---|---|
+| 1 | YTZ2026 | SHORT | 7 | 95.095 | 95.095 | -0.0 | -0.0 | open |
 
 Full trade and forecast record: [SCORECARD.md](SCORECARD.md)

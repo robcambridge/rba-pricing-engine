@@ -18,12 +18,26 @@ whether anything is worth trading. Newest entry first.
   4.0% from 3.5% and trimmed mean unchanged at 3.6%. The 3-year yield fell 4bp
   that day, on top of an 8bp fall on the RBA decision the day before.
 - My read: the market treated it as soft, but underlying inflation did not
-  fall. TODO: one line on why you think pricing has since gone back to 29%.
+  fall.
+- The dip to 18%: pricing fell from 29% to 20% on 2 October (3-year yield down
+  8bp) and to 18% on 5 October. Westpac-Melbourne Institute consumer sentiment
+  fell 4.7% to 80.4 in October, with households citing fuel costs and interest
+  rates. That fits a weaker-consumer story, but it was released on 6 October,
+  after the low, and hike pricing rose that day. So it does not explain the
+  dip, and I do not have a clear cause for the 2 October move.
+- The rebound to 29%: I think hawkish RBA commentary and oil-price volatility
+  from geopolitical risk both contributed. To verify: the source and date of
+  the Ian Harper comments I had in mind.
 
 **Prediction for the 28 October quarterly CPI**
 
-TODO: the trimmed mean number you expect, and what you think November pricing
-does if you are right.
+- Headline annual inflation around 3.7%, down from 4.0% in August. The fall is
+  mostly mechanical, from base effects in the 2025 data, with some upside risk
+  from oil.
+- I have not yet formed a view on trimmed mean, which is what my scenario map
+  and Rule D depend on (previous quarter 0.8% q/q; monthly measure 3.6%
+  annual). To add before I commit the scenario map on 27 October, along with
+  where I expect November pricing to go.
 
 **Positions**
 
@@ -32,7 +46,14 @@ does if you are right.
 
 **Decision**
 
-TODO: trade or no trade this week, and the reason.
+No new trade this week.
+
+- Rules: none can fire. Rule A is checked on the morning of 3 November, Rule D
+  on 28 October, and Rule C is already on with its next check in the first
+  week of November.
+- Discretionary: nothing this week gives me a specific reason to think pricing
+  is wrong. Sticky underlying inflation is public, and pricing is back where it
+  was on 1 October.
 
 **Coming up**
 

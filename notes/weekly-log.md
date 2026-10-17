@@ -3,6 +3,80 @@
 Two or three lines each week: what moved in pricing, why I think it moved, and
 whether anything is worth trading. Newest entry first.
 
+## 17 October 2026
+
+**What is priced** (16 October settlement)
+
+- November hike: 18%, down from 29% a week ago. Most of the fall came on
+  15 October (27% to 16%).
+- Hikes priced by mid-2027: about 21bp, down from about 27bp. Some of the
+  November hike has shifted to December, now priced at 24%.
+- 3-year futures yield 4.85%, down 6bp on the week. 10-year 5.25%. 3s10s
+  flattened to 40bp.
+
+**What happened**
+
+- September labour force (15 October): unemployment up 0.1ppt to 4.7%,
+  employment down 39,300, participation down. December 3-year futures rose
+  10.5bp that day (95.080 to 95.185), well above the 5.8bp average move on a
+  labour force day in my event study.
+- Why the reaction was so large: this was another rise in unemployment in
+  quick succession, from 4.4% in June to 4.7% three months later. With the
+  labour market now clearly loosening, the RBA faces more general opposition
+  to hiking again, and the market priced that in.
+
+**Positions**
+
+- Trade 1 (Rule C, short 7 YTZ2026 at 95.095): marked 95.150, -$1,082
+  (-0.22R). The stop at 95.345 is 19.5bp away. No action.
+
+**Rules**
+
+- No rule can fire this week.
+- Rule A watch: November is now priced at 18%, inside the 5% to 25% band. If it
+  is still there on the 2 November settlement, Rule A fires on the morning of
+  3 November.
+- Rule C: next momentum check in the first week of November.
+
+**Decision**
+
+Discretionary trade 2: long 10 IBX2026 (November cash rate futures) at 95.360,
+the 16 October settlement. My first discretionary trade, at half risk.
+
+- **What is priced:** an 18% chance of a hike on 3 November.
+- **My view:** no hike. Unemployment has risen from 4.4% to 4.7% in three
+  months, consumer sentiment is at a six-month low, and I think the RBA now
+  faces too much opposition to hike again so soon. I don't have a specific
+  probability in mind; I am betting there will not be a hike.
+- **Why this instrument:** the view is about one meeting, and the November
+  contract is the one that settles on it. A 3-year long would also be a bet on
+  the whole path.
+- **Payoff:** a hold settles the contract at 95.400, a gain of 4bp or about
+  $990. A hike settles it at 95.175, a loss of 18.5bp or about $4,560. The
+  trade only pays if a hike is less likely than the 18% priced.
+- **Stop:** 95.290, where about 50% of a hike is priced. If CPI or the RBA
+  pushes pricing there before the meeting, my view is wrong and I exit, losing
+  about $1,730. The stop cannot protect against the decision itself: a hike on
+  the day costs the full $4,560, which is what I sized on.
+- **Exit:** at the 3 November settlement, closed the next morning, unless the
+  stop is hit first.
+- **What would prove me wrong:** a strong trimmed mean on 28 October, or RBA
+  commentary keeping a November hike open.
+- **Overlap with my other trades:** this contradicts trade 1, the Rule C short
+  in the 3-year, which loses if yields fall. It is also the same direction as
+  Rule A, which may fire on 3 November. I am deliberately treating each rule
+  and each discretionary trade as an independent strategy, so I can learn how
+  each one performs on its own, rather than running them as one portfolio.
+  Each is sized and judged on its own risk. For the record, if Rule A also
+  fires, a hike would cost about $14,300 across the two November longs.
+
+**Due next week**
+
+- Trimmed mean prediction for the 28 October CPI, and where you expect
+  November pricing to go.
+- Commit the scenario map on 27 October.
+- Still open from last week: verify the source and date of the Harper comments.
+
 ## 10 October 2026
 
 **What is priced** (9 October settlement)

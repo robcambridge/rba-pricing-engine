@@ -1,2 +1,3 @@
 trade_id,entry_date,symbol,direction,contracts,entry_price,stop_price,target_price,entry_dv01,rationale,exit_date,exit_price,realised_pnl
 1,2026-10-02,YTZ2026,SHORT,7,95.095,95.345,94.845,28.09,"Rule C: 12-month momentum, 3-year yield above its level a year ago. Half risk; one significant result out of nine rules tested.",,,
+2,2026-10-16,IBX2026,LONG,10,95.36,95.29,95.4,24.66,Discretionary: no hike on 3 Nov. 18% priced; unemployment up from 4.4% to 4.7% in three months and weak sentiment make a hike unlikely. Stop at about 50% priced; exit at the 3 Nov settlement. Half risk.,,,
